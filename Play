@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>כיבוש השטח</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      background: #f4f4f4;
+    }
+    h1 {
+      margin-top: 20px;
+    }
+    table {
+      border-collapse: collapse;
+      margin-top: 20px;
+    }
+    td {
+      width: 60px;
+      height: 60px;
+      border: 1px solid #333;
+      text-align: center;
+      font-size: 20px;
+      cursor: pointer;
+      background-color: white;
+    }
+    .W { color: blue; font-weight: bold; }
+    .B { color: darkred; font-weight: bold; }
+    #status {
+      margin-top: 20px;
+    }
+  </style>
+</head>
+<body>
+  <h1>כיבוש השטח</h1>
+  <div id="status">תור: לבן (W)</div>
+  <table id="board"></table>
+
+  <script>
+    const SIZE = 6;
+    const EMPTY = "";
+    const board = [];
+    let selected = null;
+    let turn = "W";
+
+    const types = {
+      S: "⬤",
+      G: "⛨",
+      X: "✪"
+    };
+
+    function initBoard() {
+      for (let r = 0; r < SIZE; r++) {
+        board[r] = [];
+        for (let c = 0; c < SIZE; c++) {
+          board[r][c] = { team: null, type: null };
+        }
+      }
+
+      const whiteSetup = [["S", 0], ["S", 1], ["G", 2], ["X", 3], ["S", 4], ["S", 5]];
+      const blackSetup = [["S", 0], ["S", 1], ["G", 2], ["X", 3], ["S", 4], ["S", 5]];
+      for (let i = 0; i < 6; i++) {
+        board[0][whiteSetup[i][1]] = { team: "W", type: whiteSetup[i][0] };
+        board[5][blackSetup[i][1]] = { team: "B", type: blackSetup[i][0] };
+      }
+    }
+
+    function renderBoard() {
+      const table = document.getElementById("board");
+      table.innerHTML = "";
+      for (let r = 0; r < SIZE; r++) {
+        const tr = document.createElement("tr");
+        for (let c = 0; c < SIZE; c++) {
+          const td = document.createElement("td");
+          const cell = board[r][c];
+          if (cell.team && cell.type) {
+            td.textContent = types[cell.type];
+            td.className = cell.team;
+          }
+          td.onclick = () => handleClick(r, c);
+          if (selected && selected[0] === r && selected[1] === c) {
+            td.style.backgroundColor = "#ddd";
+          }
+          tr.appendChild(td);
+        }
+        table.appendChild(tr);
+      }
+    }
+
+    function handleClick(r, c) {
+      const cell = board[r][c];
+      if (selected) {
+        const [sr, sc] = selected;
+        if ((sr !== r || sc !== c) && isValidMove(sr, sc, r, c)) {
+          move(sr, sc, r, c);
+          selected = null;
+          turn = turn === "W" ? "B" : "W";
+          document.getElementById("status").textContent = `תור: ${turn === "W" ? "לבן (W)" : "שחור (B)"}`;
+        } else {
+          selected = null;
+        }
+      } else {
+        if (cell.team === turn) {
+          selected = [r, c];
+        }
+      }
+      renderBoard();
+    }
+
+    function isValidMove(sr, sc, r, c) {
+      const piece = board[sr][sc];
+      if (!piece || piece.team !== turn) return false;
+      const dr = Math.abs(r - sr), dc = Math.abs(c - sc);
+      if (r === sr && c === sc) return false;
+      if (board[r][c].team === turn) return false;
+      if (piece.type === "X") {
+        return (dr === 1 && dc === 1) || ((dr === 0 || dc === 0) && dr + dc <= 2);
+      } else {
+        return dr + dc === 1;
+      }
+    }
+
+    function move(sr, sc, r, c) {
+      const attacker = board[sr][sc];
+      const target = board[r][c];
+      if (target.team && target.team !== attacker.team) {
+        if (target.type === "G" || isGuarded(r, c, target.team)) return;
+      }
+      board[r][c] = attacker;
+      board[sr][sc] = { team: null, type: null };
+    }
+
+    function isGuarded(r, c, team) {
+      const dirs = [[-1,0],[1,0],[0,-1],[0,1]];
+      return dirs.some(([dr, dc]) => {
+        const nr = r + dr, nc = c + dc;
+        return board[nr] && board[nr][nc] && board[nr][nc].team === team && board[nr][nc].type === "G";
+      });
+    }
+
+    initBoard();
+    renderBoard();
+  </script>
+</body>
+</html>
